@@ -1,7 +1,8 @@
 import requests
 import re
+import time
 
-listOfParam = ['Час по местному времени', 'День.Месяц', 'Направление ветра', 'V ветра, м/с', 't воздуха, `C', 'Влажность. %',
+listOfParam = ['Час по местному времени', 'День.Месяц.Год', 'Направление ветра', 'V ветра, м/с', 't воздуха, `C', 'Влажность, %',
                 'Давление воздуха на высоте места измерения над уровнем моря, мм рт. ст.', 'min t воздуха, `C', 'max t воздуха, `C',
                 'Количество осадков за последние 12ч, мм', 'Высота снежного покрова, см', 'Состояние снега, величина покрытия местности в баллах']
 
@@ -541,8 +542,8 @@ t = '''</tr>
 
 # Получение html страницы с раздела сайта "Погода и климат" --> "Архив погоды". id следует взять из адресной строки браузера после перехода
 # к нужному населенному пункту.
-'''params = {'id':'29635', 'bday':'1', 'fday':'3', 'amonth':'12', 'ayear':'2018', 'bot':'2'}
-r = requests.get('http://www.pogodaiklimat.ru/weather.php', params)
+params = {'id':'29635', 'bday':'1', 'fday':'3', 'amonth':'12', 'ayear':'2018', 'bot':'2'}
+'''r = requests.get('http://www.pogodaiklimat.ru/weather.php', params)
 r.encoding = 'utf-8'
 t = r.text
 '''
@@ -552,7 +553,7 @@ stringUTC = stringUTC.rstrip()
 regexes = [re.compile(str(i)) for i in range(13)]
 for regex in regexes:
     if regex.search(stringUTC):
-        deltaTime = regex.pattern
+        deltaTime = int(regex.pattern)
 
 # Выпиливаем нужное из таблицы html файла. То, что нужно, по порядку перечислено в listOfParams.
 tableInString = t[t.find('</tr'):t.find('</table')]
@@ -577,8 +578,14 @@ for i in tableInString:
             data = j[j.find('"') + 1:j.find('" ')]
             listOfData[n].append(data)
     n += 1
-    
 
-# print(tableInString)
+# Поправка на местное время c коррекцией даты. Первод давления из ГПа в мм рт. ст.
+for i in listOfData:
+    data = i[1].split('.')
+    timeEpoch = time.mktime((int(params['ayear']), int(data[1]), int(data[0]), int(i[0]) + deltaTime, 0, 0, 0, 0, 0))
+    parsedTime = time.strptime(time.ctime(timeEpoch))
+    i[0] = str(parsedTime.tm_hour)
+    i[1] = str(parsedTime.tm_mday) + '.' + str(parsedTime.tm_mon) + '.' + str(parsedTime.tm_year)
+    i[6] = '%.1f' % (float(i[6]) * 0.750063755419211)
+
 print(listOfData)
-print(deltaTime)
