@@ -1,6 +1,7 @@
 import requests
 import re
 import time
+import datetime
 import csv
 
 listOfParam = ['Час по местному времени', 'День.Месяц.Год', 'Направление ветра', 'V ветра, м/с', 't воздуха, `C', 'Влажность, %',
@@ -541,9 +542,52 @@ listOfParam = ['Час по местному времени', 'День.Меся
     </table>
     <p>Внимание! Время в таблицах - всемирное. Для получения местного времени необходимо прибавить поправку, которая   равна 7  ч.</p>'''
 """
+
+today = datetime.date.today()
+print('''\n
+    +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        Утилита получения архивных данных о погоде с сайта "Погода и климат" /www.pogodaiklimat.ru/
+            разработчик Кузовлев Александр /kav.develop@yandex.ru/
+            с. Ленинское, Новосибирского р-на
+            вер. 1.0, январь 2019 г.
+    +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n''')
+
+print('''Для запроса информации вам нужно узнать id населенного пунка или метеостанции.
+Для этого следует перейти к разделу сайта: "Погода и климат" --> "Архив погоды" --> Объект (населенный пункт, метеостанция).
+id следует взять из адресной строки браузера после перехода к нужному объекту.
+По умолчанию будет использован id=29635, для метеостанции "Обская ГМО" (Новосибрская обл.)''')
+
+while True:
+    idNumber = input('Введите id объекта: ')
+    if idNumber == '':
+        idNumber = '29635'
+        break
+    if idNumber.isdigit():
+        break
+    print('Внимание! Допустимо только целое число.')
+
+print('Введите интересующий вас период:')
+
+while True:
+    year = input('Год (не ранее 2011 года): ')
+    month = input('Месяц (цифрой): ')
+    firstDay = input('Начальное число периода: ')
+    lastDay = input('Конечное число периода: ')
+    if year.isdigit() and month.isdigit() and firstDay.isdigit() and lastDay.isdigit():
+        year = int(year)
+        month = int(month)
+        firstDay = int(firstDay)
+        lastDay = int(lastDay)
+        if today.year >= year >= 2011:
+            if (31 >= firstDay >= 1) and (31 >= lastDay >= 1):
+                if firstDay <= lastDay:
+                    if datetime.date(year, month, firstDay) <= today:
+                        break
+    print('Проверьте корректность ввода данных!')
+
 # Получение html страницы с раздела сайта "Погода и климат" --> "Архив погоды". id следует взять из адресной строки браузера после перехода
 # к нужному населенному пункту.
-params = {'id':'29635', 'bday':'1', 'fday':'31', 'amonth':'12', 'ayear':'2018', 'bot':'2'}
+params = {'id':idNumber, 'bday':str(firstDay), 'fday':str(lastDay), 'amonth':str(month), 'ayear':str(year), 'bot':'2'}
 r = requests.get('http://www.pogodaiklimat.ru/weather.php', params)
 r.encoding = 'utf-8'
 t = r.text
@@ -595,3 +639,6 @@ with open('arhive.csv', 'w') as arhFile:
     writer.writeheader()
     for i in listOfData:
         writer.writerow(dict(zip(listOfParam, i)))
+
+print('OK!')
+print('Откройте файл arhive.csv')
