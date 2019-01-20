@@ -1,13 +1,14 @@
 import requests
 import re
 import time
+import csv
 
 listOfParam = ['Час по местному времени', 'День.Месяц.Год', 'Направление ветра', 'V ветра, м/с', 't воздуха, `C', 'Влажность, %',
                 'Давление воздуха на высоте места измерения над уровнем моря, мм рт. ст.', 'min t воздуха, `C', 'max t воздуха, `C',
                 'Количество осадков за последние 12ч, мм', 'Высота снежного покрова, см', 'Состояние снега, величина покрытия местности в баллах']
 
 # Для быстрой отладки:
-t = '''</tr>
+"""t = '''</tr>
 
     <tr height="30" bgColor=#ffffff>
     <td class=black><b>00</b></td>
@@ -539,14 +540,14 @@ t = '''</tr>
     </tr>
     </table>
     <p>Внимание! Время в таблицах - всемирное. Для получения местного времени необходимо прибавить поправку, которая   равна 7  ч.</p>'''
-
+"""
 # Получение html страницы с раздела сайта "Погода и климат" --> "Архив погоды". id следует взять из адресной строки браузера после перехода
 # к нужному населенному пункту.
-params = {'id':'29635', 'bday':'1', 'fday':'3', 'amonth':'12', 'ayear':'2018', 'bot':'2'}
-'''r = requests.get('http://www.pogodaiklimat.ru/weather.php', params)
+params = {'id':'29635', 'bday':'1', 'fday':'31', 'amonth':'12', 'ayear':'2018', 'bot':'2'}
+r = requests.get('http://www.pogodaiklimat.ru/weather.php', params)
 r.encoding = 'utf-8'
 t = r.text
-'''
+
 # Взятие поправки к UTC из html страницы.
 stringUTC = t[t.find('<p>Внимание!'):t.find('ч.</p>')]
 stringUTC = stringUTC.rstrip()
@@ -575,8 +576,8 @@ for i in tableInString:
         data = j[j.find('>') + 1:j.find('<')]
         listOfData[n].append(data)
         if i.index(j) == 10:                        # Получение данных по виду снежного покрова из последней строки.
-            data = j[j.find('"') + 1:j.find('" ')]
-            listOfData[n].append(data)
+            dataSnow = j[j.find('"') + 1:j.find('" ')]
+            listOfData[n].append(dataSnow)
     n += 1
 
 # Поправка на местное время c коррекцией даты. Первод давления из ГПа в мм рт. ст.
@@ -588,4 +589,9 @@ for i in listOfData:
     i[1] = str(parsedTime.tm_mday) + '.' + str(parsedTime.tm_mon) + '.' + str(parsedTime.tm_year)
     i[6] = '%.1f' % (float(i[6]) * 0.750063755419211)
 
-print(listOfData)
+# Запись в csv файл.
+with open('arhive.csv', 'w') as arhFile:
+    writer = csv.DictWriter(arhFile, fieldnames=listOfParam)
+    writer.writeheader()
+    for i in listOfData:
+        writer.writerow(dict(zip(listOfParam, i)))
